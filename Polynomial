@@ -1,0 +1,226 @@
+package main;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class Polynomial {
+
+	public static void main(String[] args) {
+		String string = new Scanner(System.in).nextLine();
+		Polynom polynom = toPolynom(string);
+		System.out.println(polynom.derivative());
+
+	}
+
+	
+	/**This method parses string and returns {@link Polynom}
+	 * 
+	 * @param string
+	 * @return
+	 */
+	public static Polynom toPolynom(String string) {
+		Polynom pol = new Polynom();
+		StringBuilder sb = new StringBuilder(string);
+		if (sb.indexOf("x") == -1) {
+			pol.add(new MemberPolynom(Integer.parseInt(sb.toString()), 0));
+			return pol;
+		}
+		for (int i = 0, j = 0; i < sb.length() && j < sb.length(); j = 0) {
+			int coef = 0, power = 0;
+			if ((j = sb.indexOf("x")) == -1) {
+				coef = Integer.parseInt(sb.toString());
+				pol.add(new MemberPolynom(coef, power));
+				return pol;
+			} else {
+				if (j == 0) {
+					coef = 1;
+				} else if (sb.charAt(j - 1) == '*') {
+					coef = Integer.parseInt(sb.substring(0, j - 1));
+				} else if (sb.charAt(j - 1) == '-') {
+					coef = -1;
+				} else if (sb.charAt(j - 1) == '+') {
+					coef = 1;
+				}
+			}
+			if (j == sb.length() - 1) {
+				power = 1;
+				pol.add(new MemberPolynom(coef, power));
+				return pol;
+			}
+
+			if (sb.charAt(j + 1) == '^') {
+				sb.replace(0, j + 2, "");
+				j = 0;
+				while (j != sb.length() && Character.isDigit(sb.charAt(j))) {
+					j++;
+				}
+				if (j == sb.length()) {
+					power = Integer.parseInt(sb.toString());
+					sb = new StringBuilder();
+				} else {
+					power = Integer.parseInt(sb.substring(0, j));
+					sb.replace(0, j, "");
+				}
+			} else {
+				power = 1;
+				sb.replace(0, j + 1, "");
+			}
+			pol.add(new MemberPolynom(coef, power));
+		}
+		return pol;
+	}
+}
+
+/**Polynom save members of polynom in sorted order
+ * 
+ * @author Alexey Kopylov
+ *
+ */
+class Polynom {
+	List<MemberPolynom> polynom;
+
+	public Polynom() {
+		polynom = new LinkedList<MemberPolynom>();
+	}
+
+	/** Return new Polynom as the derivative of this polynom. This polynom does not change
+	 * @return
+	 */
+	public Polynom derivative() {
+		if (this == null) {
+			return null;
+		}
+		Polynom result = new Polynom();
+		for (MemberPolynom t : this.polynom) {
+			if (t.getPower() != 0 && t.getCoeficcient() != 0) {
+				result.add(new MemberPolynom(t.getCoeficcient() * t.getPower(), t.getPower() - 1));
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * This method add new {@link MemberPolynom} and if Polynom contains
+	 * {@link MemberPolynom} with the same power this method summarize coefficient
+	 * new {@link MemberPolynom} and older with the same power
+	 * 
+	 * The method guarantees that {@link Polynom} contains MemberPolynom in sorted
+	 * order and doesn't MemberPolynom with the same power
+	 * 
+	 * @param mem
+	 *            is element, which add to {@link Polynom}
+	 * 
+	 */
+	public void add(MemberPolynom mem) {
+		if (!polynom.stream().anyMatch(p -> p.getPower() == mem.getPower())) {
+			polynom.add(mem);
+			Collections.sort(polynom);
+		} else {
+			MemberPolynom temp = this.getMember(mem.getPower());
+			polynom.remove(temp);
+			polynom.add(new MemberPolynom(temp.getCoeficcient() + mem.getCoeficcient(), temp.getPower()));
+			Collections.sort(polynom);
+		}
+	}
+
+	/**
+	 * This method return {@link MemberPolynom} specified power, if such member does
+	 * not exist method return MemberPolynom with power = 0 and coeficient = 0
+	 * 
+	 * @param power
+	 * @return
+	 */
+	public MemberPolynom getMember(int power) {
+		if (polynom.stream().anyMatch(p -> p.getPower() == power)) {
+			return polynom.stream().filter(p -> p.getPower() == power).collect(Collectors.toList()).get(0);
+		}
+		return new MemberPolynom(0, 0);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder str = new StringBuilder();
+		boolean ifFirst = true;
+		for (MemberPolynom t : polynom) {
+			if (ifFirst) {
+				str.append(t.toString(ifFirst));
+				ifFirst = false;
+			} else {
+				str.append(t.toString());
+			}
+		}
+		return str.append("\n").toString();
+	}
+}
+
+/**
+ * MemberPolynom save coefficient and power of the polynom member
+ * 
+ * @author Alexey Kopylov
+ *
+ */
+class MemberPolynom implements Comparable<MemberPolynom> {
+	private int power;
+	private int coeficcient;
+
+	public MemberPolynom(int coef, int power) {
+		this.coeficcient = coef;
+		this.power = power;
+	}
+
+	public int getPower() {
+		return power;
+	}
+
+	public int getCoeficcient() {
+		return coeficcient;
+	}
+
+	@Override
+	public int compareTo(MemberPolynom o) {
+		return this.power < o.power ? 1 : this.power == o.power ? 0 : -1;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder string = new StringBuilder();
+		if (coeficcient == 0) {
+			return "";
+		} else if (coeficcient > 1 && power > 1) {
+			return "+" + coeficcient + "*x^" + power;
+		} else if (power == 1 && coeficcient > 1) {
+			return "+" + coeficcient + "*x";
+		} else if (coeficcient == 1 && power == 1) {
+			return "+x";
+		} else if (power == 0) {
+			return "+" + coeficcient;
+		} else if (coeficcient == 1 && power > 1) {
+			return "+x^" + power;
+		} else if (coeficcient < -1 && power > 1) {
+			return coeficcient + "*x^" + power;
+		} else if (coeficcient < -1 && power == 1) {
+			return coeficcient + "*x";
+		} else if (coeficcient == -1 && power == 1) {
+			return "-x";
+		} else if (coeficcient == -1 && power > 1) {
+			return "-x^" + power;
+		} else {
+			return "" + coeficcient;
+		}
+	}
+
+	/**
+	 * If this MemberPolynow is the first member in Polynom it will be print without
+	 * plus
+	 * 
+	 * @param ifFirst
+	 * @return
+	 */
+	public String toString(boolean ifFirst) {
+		if (ifFirst && coeficcient > 0) {
+			return new StringBuilder(this.toString()).substring(1);
+		} else {
+			return this.toString();
+		}
+	}
+}
